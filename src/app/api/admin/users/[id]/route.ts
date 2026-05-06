@@ -36,8 +36,8 @@ export async function PATCH(
       data: updateData
     });
 
-    const userWithoutPassword = { ...user } as any;
-    delete userWithoutPassword.password;
+    const { password: _p, ...userWithoutPassword } = user;
+    void _p;
     return NextResponse.json({ success: true, user: userWithoutPassword });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'

@@ -31,9 +31,9 @@ export async function GET() {
 
     // Remove passwords from response
     const usersWithoutPasswords = users.map(user => {
-      const userCopy = { ...user } as any
-      delete userCopy.password
-      return userCopy
+      const { password: _p, ...rest } = user
+      void _p
+      return rest
     })
 
     return NextResponse.json(usersWithoutPasswords)
@@ -80,8 +80,8 @@ export async function POST(request: Request) {
       }
     })
 
-    const userWithoutPassword = { ...user } as any
-    delete userWithoutPassword.password
+    const { password: _p, ...userWithoutPassword } = user
+    void _p
     return NextResponse.json({ message: 'User created successfully', user: userWithoutPassword })
     
   } catch (error: unknown) {
