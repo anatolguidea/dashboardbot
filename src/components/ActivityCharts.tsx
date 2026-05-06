@@ -1,163 +1,91 @@
-"use client";
-
-import React, { useMemo } from 'react';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Legend
+import React from 'react';
+import {
+  ComposedChart,
+  Line,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
 } from 'recharts';
-import { useLanguage } from './LanguageProvider';
-import type { ChartPoint } from '@/lib/types';
+import type { DailyData } from '@/lib/types';
 
-interface ChartProps {
-  chartData: ChartPoint[];
+interface Props {
+  chartData: DailyData[];
 }
 
-const PREDEFINED_COLORS = [
-  "#3b82f6", // Blue
-  "#ec4899", // Pink
-  "#10b981", // Emerald
-  "#8b5cf6", // Violet
-  "#f59e0b", // Amber
-  "#06b6d4", // Cyan
-  "#ef4444", // Red
-  "#84cc16", // Lime
-];
+export function ActivityCharts({ chartData }: Props) {
+  const [mounted, setMounted] = React.useState(false);
 
-export function ActivityCharts({ chartData }: ChartProps) {
-  const { t } = useLanguage();
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  // Extract all unique platform keys present in the current dataset dynamically
-  const platformKeys = useMemo(() => {
-    if (!chartData || chartData.length === 0) return [];
-    
-    const keys = new Set<string>();
-    chartData.forEach(dataPoint => {
-      if (dataPoint.platforms) {
-        Object.keys(dataPoint.platforms).forEach(k => keys.add(k));
-      }
-    });
-    return Array.from(keys);
-  }, [chartData]);
+  if (!mounted) return <div className="h-[400px]" />;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-      
-      {/* Area Chart for Messages & Users */}
-      <div className="glass-panel p-6">
-        <h3 className="text-lg font-semibold mb-6 flex items-center">
-          <div className="w-2 h-6 bg-indigo-500 rounded-full mr-3"></div>
-          {t.activityChart}
-        </h3>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis 
-                dataKey="date" 
-                stroke="#64748b" 
-                fontSize={12} 
-                tickLine={false} 
-                axisLine={false}
-              />
-              <YAxis 
-                stroke="#64748b" 
-                fontSize={12} 
-                tickLine={false} 
-                axisLine={false}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'rgba(15, 17, 21, 0.9)', 
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px',
-                  backdropFilter: 'blur(8px)'
-                }}
-              />
-              <Legend wrapperStyle={{ paddingTop: '20px' }}/>
-              <Area 
-                type="monotone" 
-                dataKey="messages" 
-                name={t.messages}
-                stroke="#6366f1" 
-                strokeWidth={3}
-                fillOpacity={1} 
-                fill="url(#colorMessages)" 
-              />
-              <Area 
-                type="monotone" 
-                dataKey="users" 
-                name={t.users}
-                stroke="#8b5cf6" 
-                strokeWidth={3}
-                fillOpacity={1} 
-                fill="url(#colorUsers)" 
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-[400px]">
+      <h3 className="text-lg font-semibold text-slate-800 mb-6">Evoluția leadurilor și conversiei</h3>
+      <div className="h-[300px] w-full">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+          <ComposedChart
+            data={chartData}
+            margin={{ top: 20, right: 20, bottom: 20, left: 0 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <XAxis 
+              dataKey="date" 
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#64748b', fontSize: 12 }}
+              dy={10}
+            />
+            <YAxis 
+              yAxisId="left" 
+              orientation="left" 
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#64748b', fontSize: 12 }}
+              label={{ value: 'Număr leaduri', angle: -90, position: 'insideLeft', fill: '#3b82f6', fontSize: 12, dy: -60, dx: 10 }}
+            />
+            <YAxis 
+              yAxisId="right" 
+              orientation="right" 
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#64748b', fontSize: 12 }}
+              tickFormatter={(value) => `${value}%`}
+              label={{ value: 'Conversie (%)', angle: 90, position: 'insideRight', fill: '#f97316', fontSize: 12, dy: -60, dx: -10 }}
+            />
+            <Tooltip
+              contentStyle={{ backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+              itemStyle={{ fontSize: '13px' }}
+              labelStyle={{ color: '#0f172a', fontWeight: 'bold', marginBottom: '8px' }}
+            />
+            <Legend 
+              verticalAlign="bottom" 
+              height={36}
+              iconType="circle"
+              wrapperStyle={{ fontSize: '12px', color: '#475569', paddingTop: '20px' }}
+            />
+            <Bar yAxisId="left" dataKey="totalLeads" name="Nr. total leaduri" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} />
+            <Bar yAxisId="left" dataKey="leadsWith2PlusMessages" name="Lead cu ≥ 2 mesaje" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
+            <Bar yAxisId="left" dataKey="leadsWithPhone" name="Lead cu număr de telefon" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={30} />
+            <Line 
+              yAxisId="right" 
+              type="monotone" 
+              dataKey="conversionRate" 
+              name="% conversie" 
+              stroke="#f97316" 
+              strokeWidth={2}
+              dot={{ r: 4, fill: '#f97316', strokeWidth: 0 }}
+              activeDot={{ r: 6 }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
       </div>
-
-      {/* Bar Chart for Platforms Split */}
-      <div className="glass-panel p-6">
-        <h3 className="text-lg font-semibold mb-6 flex items-center">
-          <div className="w-2 h-6 bg-emerald-500 rounded-full mr-3"></div>
-          {t.platforms}
-        </h3>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis 
-                dataKey="date" 
-                stroke="#64748b" 
-                fontSize={12} 
-                tickLine={false} 
-                axisLine={false}
-              />
-              <YAxis 
-                stroke="#64748b" 
-                fontSize={12} 
-                tickLine={false} 
-                axisLine={false}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'rgba(15, 17, 21, 0.9)', 
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px'
-                }}
-                cursor={{fill: 'rgba(255,255,255,0.05)'}}
-              />
-              <Legend wrapperStyle={{ paddingTop: '20px' }}/>
-              {platformKeys.map((platform, indx) => {
-                const color = PREDEFINED_COLORS[indx % PREDEFINED_COLORS.length];
-                const isLast = indx === platformKeys.length - 1;
-                return (
-                  <Bar 
-                    key={platform} 
-                    dataKey={`platforms.${platform}`} 
-                    name={platform.charAt(0).toUpperCase() + platform.slice(1)} 
-                    stackId="a" 
-                    fill={color} 
-                    radius={isLast ? [4, 4, 0, 0] : [0, 0, 0, 0]} 
-                  />
-                );
-              })}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
     </div>
   );
 }

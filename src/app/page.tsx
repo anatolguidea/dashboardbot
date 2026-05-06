@@ -1,40 +1,98 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { KeyMetrics } from '@/components/KeyMetrics';
 import { ActivityCharts } from '@/components/ActivityCharts';
-import { TimeFilter } from '@/components/TimeFilter';
-import { DateSelector } from '@/components/DateSelector';
+import { DataTable } from '@/components/DataTable';
 import { AiInsights } from '@/components/AiInsights';
-import { BotSelector } from '@/components/BotSelector';
-import { useLanguage } from '@/components/LanguageProvider';
-import { DownloadCloud, Globe } from 'lucide-react';
 import { useMetrics } from '@/hooks/useMetrics';
-import { useAiInsights } from '@/hooks/useAiInsights';
-import { useBots } from '@/hooks/useBots';
-import type { RecentActivity } from '@/lib/types';
-import type { Language } from '@/lib/i18n';
+import { Download, RefreshCw, Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+
+import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
+
+const MONTHS_RO = [
+  'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
+  'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'
+];
 
 export default function Dashboard() {
-  const [selectedBotId, setSelectedBotId] = React.useState("all");
-  const { t, language, setLanguage } = useLanguage();
-  const { bots } = useBots();
-  const { data, loading, error, period, setPeriod, dateSelected, setDateSelected } = useMetrics(selectedBotId);
-  const { insights, loading: aiLoading, error: aiError } = useAiInsights(period, dateSelected, selectedBotId);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [source, setSource] = useState('Toate');
+  const [grouping, setGrouping] = useState<'Zi' | 'Săptămână' | 'Lună'>('Zi');
+  
+  // Month navigation state
+  const [viewDate, setViewDate] = useState(new Date());
+  const [isCustomRange, setIsCustomRange] = useState(false);
+  
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  
+  // Update dates when viewDate changes (unless in custom mode)
+  useEffect(() => {
+    if (!isCustomRange) {
+      const year = viewDate.getFullYear();
+      const month = viewDate.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      
+      const format = (d: Date) => {
+        const Y = d.getFullYear();
+        const M = String(d.getMonth() + 1).padStart(2, '0');
+        const D = String(d.getDate()).padStart(2, '0');
+        return `${Y}-${M}-${D}`;
+      };
+      
+      setStartDate(format(firstDay));
+      setEndDate(format(lastDay));
+    }
+  }, [viewDate, isCustomRange]);
+
+  const router = useRouter();
+  const { data, loading, error } = useMetrics(source, startDate, endDate, grouping);
+
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: '/login' });
+  };
+
+  const handlePrevMonth = () => {
+    setIsCustomRange(false);
+    setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setIsCustomRange(false);
+    setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const handleExport = () => {
+    if (!data) return;
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `dashboard_metrics_${source.toLowerCase()}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleResetFilters = () => {
+    setSource('Toate');
+    setGrouping('Zi');
+    setIsCustomRange(false);
+    setViewDate(new Date());
+  };
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
-         <div className="glass-panel p-8 max-w-md w-full border border-red-500/30 rounded-3xl">
-           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
+         <div className="glass-panel p-8 max-w-md w-full border border-red-200 rounded-2xl">
+           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-red-500 text-2xl">⚠️</span>
            </div>
-           <h2 className="text-xl text-red-400 font-semibold mb-2">Connection Error</h2>
-           <p className="text-slate-300 text-sm mb-4">{error}</p>
-           <p className="text-slate-400 text-xs p-3 bg-red-950/20 rounded-lg border border-red-500/20">
-              Please make sure your Python backend API is running at <code className="text-red-300">http://127.0.0.1:8000</code>.
-           </p>
+           <h2 className="text-xl text-red-600 font-semibold mb-2">Connection Error</h2>
+           <p className="text-slate-600 text-sm mb-4">{error}</p>
          </div>
       </div>
     );
@@ -42,127 +100,197 @@ export default function Dashboard() {
 
   if (loading || !data) {
     return (
-      <div className="h-screen w-full flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-4 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
+      <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+        <div className="w-8 h-8 rounded-full border-4 border-blue-500/30 border-t-blue-500 animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <main className="flex-1 p-6 lg:p-10 max-w-7xl mx-auto w-full">
-      {/* Header */}
-      <motion.header 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4"
-      >
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">{t.dashboard}</h1>
-          <p className="text-slate-400 flex items-center">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
-            {t.integrationReady}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <BotSelector bots={bots} value={selectedBotId} setValue={setSelectedBotId} />
-
-          <TimeFilter period={period} setPeriod={setPeriod} />
-
-          <DateSelector date={dateSelected} setDate={setDateSelected} />
-
-          <div className="glass-panel px-3 py-1.5 flex items-center gap-2 rounded-full border border-white/10">
-            <Globe className="w-4 h-4 text-slate-400" />
-              <select 
-                value={language}
-                onChange={(e) => setLanguage(e.target.value as Language)}
-                className="bg-transparent text-sm text-slate-200 outline-none cursor-pointer"
-              >
-              <option value="en" className="bg-slate-900">{t.language_en}</option>
-              <option value="ro" className="bg-slate-900">{t.language_ro}</option>
-            </select>
+    <div className="flex h-screen w-full bg-[#f8fafc] overflow-hidden">
+      {/* Sidebar */}
+      <aside className={`bg-white border-r border-slate-200 flex flex-col flex-shrink-0 transition-all duration-300 z-20 absolute md:relative h-full ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full md:w-0 md:-translate-x-full'}`}>
+        <div className="p-6 flex items-center justify-between border-b border-slate-100 whitespace-nowrap">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-600 p-2 rounded-lg">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            </div>
+            <span className="font-bold text-xl text-blue-600 tracking-tight">LeadTrack</span>
           </div>
-          
-          <button 
-            onClick={() => {
-              const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
-              const downloadAnchorNode = document.createElement('a');
-              downloadAnchorNode.setAttribute("href", dataStr);
-              downloadAnchorNode.setAttribute("download", "dashboard_metrics.json");
-              document.body.appendChild(downloadAnchorNode);
-              downloadAnchorNode.click();
-              downloadAnchorNode.remove();
-            }}
-            className="glass-panel px-4 py-2 flex items-center gap-2 text-sm font-medium hover:bg-white/5 transition-colors group"
-          >
-            <DownloadCloud className="w-4 h-4 text-indigo-400 group-hover:text-indigo-300" />
-            <span>{t.exportData}</span>
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-slate-600">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-      </motion.header>
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <a href="#" className="flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-600 rounded-xl font-medium whitespace-nowrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Dashboard
+          </a>
+          
+          <a href="#" className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium whitespace-nowrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Baza de cunoștințe
+          </a>
+        </nav>
+        <div className="p-4 border-t border-slate-100">
+          <button 
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-medium transition-colors whitespace-nowrap"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Deconectare
+          </button>
+        </div>
+      </aside>
 
-      {/* Main Content */}
-      <div className="space-y-6">
-        <section>
-          <KeyMetrics data={data} />
-        </section>
-        
-        <section>
-          <ActivityCharts chartData={data.chartData} />
-        </section>
+      {/* Overlay for mobile sidebar */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/20 z-10 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
-        <AiInsights insights={insights} loading={aiLoading} error={aiError} />
-
-        {/* Recent Activity Table using Glassmorphism */}
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="glass-panel p-6 mt-6"
-        >
-          <h3 className="text-lg font-semibold mb-6 flex items-center">
-            <div className="w-2 h-6 bg-pink-500 rounded-full mr-3"></div>
-            {t.recentActivity}
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-white/5">
-                  <th className="pb-3 text-sm font-medium text-slate-400">{t.sender}</th>
-                  <th className="pb-3 text-sm font-medium text-slate-400">{t.eventType}</th>
-                  <th className="pb-3 text-sm font-medium text-slate-400">{t.channel}</th>
-                  <th className="pb-3 text-sm font-medium text-slate-400">{t.botId}</th>
-                  <th className="pb-3 text-sm font-medium text-slate-400">Time</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
-                {data.recentActivity.map((activity: RecentActivity) => (
-                  <tr key={activity.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-                    <td className="py-4 text-slate-200">
-                      <div className="font-medium">{activity.senderName}</div>
-                      <div className="text-xs text-slate-500">{activity.senderId}</div>
-                    </td>
-                    <td className="py-4 text-slate-300">
-                      {activity.type === 'new_phonenumber' ? t.newPhoneNumber : t.newUser}
-                    </td>
-                    <td className="py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                        activity.channel.toLowerCase() === 'facebook' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                        activity.channel.toLowerCase() === 'instagram' ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20' :
-                        'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      }`}>
-                        {activity.channel}
-                      </span>
-                    </td>
-                    <td className="py-4 text-slate-400">{activity.botId}</td>
-                    <td className="py-4 text-slate-400">{activity.time}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <main className="flex-1 p-6 lg:p-10 mx-auto w-full max-w-[1400px] h-full overflow-y-auto">
+        {/* Header */}
+        <header className="flex flex-col md:flex-row md:items-start justify-between mb-8 gap-4">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 -ml-2 rounded-lg text-slate-500 hover:bg-slate-200 transition-colors"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div>
+              <h1 className="text-3xl font-semibold text-slate-800 mb-1">Dashboard leaduri</h1>
+              <p className="text-slate-500 text-sm">Statistici și conversie pe canal</p>
+            </div>
           </div>
-        </motion.section>
-      </div>
-    </main>
+          
+          <div className="flex items-center text-slate-500 text-sm">
+            <span>Actualizat la: {new Date().toLocaleDateString('ro-RO')}</span>
+            <button className="ml-2 p-1 hover:bg-slate-200 rounded-full transition-colors" onClick={() => window.location.reload()}>
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+        </header>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4 mb-8">
+          {/* Month Navigator */}
+          <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+            <button 
+              onClick={handlePrevMonth}
+              className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="px-4 py-1.5 text-sm font-semibold text-slate-700 min-w-[120px] text-center">
+              {MONTHS_RO[viewDate.getMonth()]} {viewDate.getFullYear()}
+            </div>
+            <button 
+              onClick={handleNextMonth}
+              className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400">
+            <Calendar className="w-4 h-4 mr-2 text-slate-400" />
+            <input 
+              type="date" 
+              value={startDate} 
+              onChange={e => {
+                setStartDate(e.target.value);
+                setIsCustomRange(true);
+              }}
+              className="text-sm text-slate-700 outline-none bg-transparent"
+              title="Data de început"
+            />
+            <span className="mx-2 text-slate-400">-</span>
+            <input 
+              type="date" 
+              value={endDate} 
+              onChange={e => {
+                setEndDate(e.target.value);
+                setIsCustomRange(true);
+              }}
+              className="text-sm text-slate-700 outline-none bg-transparent"
+              title="Data de sfârșit"
+            />
+          </div>
+
+          <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+            {['Toate', ...(data?.sources?.map((s: any) => s.name) || ['Facebook', 'Instagram', 'Site'])].map(tab => (
+              <button 
+                key={tab}
+                onClick={() => setSource(tab)}
+                className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  source === tab ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center bg-white border border-slate-200 rounded-xl shadow-sm hover:border-slate-300 overflow-hidden pr-3">
+            <select 
+              value={grouping}
+              onChange={(e) => setGrouping(e.target.value as 'Zi' | 'Săptămână' | 'Lună')}
+              className="pl-4 pr-2 py-2 text-sm font-medium text-slate-700 outline-none bg-transparent appearance-none cursor-pointer"
+            >
+              <option value="Zi">Grupare: Zi</option>
+              <option value="Săptămână">Grupare: Săptămână</option>
+              <option value="Lună">Grupare: Lună</option>
+            </select>
+            <ChevronDown className="w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
+
+          <div className="flex-1"></div>
+
+          <button 
+            onClick={handleResetFilters}
+            className="flex items-center text-sm font-medium text-slate-600 hover:text-slate-800 px-4 py-2"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Reset filtre
+          </button>
+
+          <button 
+            onClick={handleExport}
+            className="flex items-center bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </button>
+        </div>
+
+        {/* Main Content */}
+        <div className="space-y-6">
+          <section>
+            <KeyMetrics data={data} />
+          </section>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <ActivityCharts chartData={data.chartData} />
+            </div>
+            <div className="lg:col-span-1 space-y-6">
+               <AiInsights sources={data.sources} chartData={data.chartData} />
+            </div>
+          </div>
+
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <DataTable data={data.chartData} />
+          </motion.section>
+        </div>
+      </main>
+    </div>
   );
 }

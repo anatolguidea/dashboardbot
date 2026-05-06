@@ -1,71 +1,130 @@
-"use client";
+import React, { useMemo } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { CheckCircle2, AlertTriangle, Star } from 'lucide-react';
+import type { DailyData } from '@/lib/types';
 
-import { useLanguage } from "./LanguageProvider";
-import type { AiInsightsData } from "@/lib/types";
-
-interface AiInsightsProps {
-  insights: AiInsightsData | null;
-  loading: boolean;
-  error: string | null;
+interface SourceData {
+  name: string;
+  percentage: number;
+  color: string;
 }
 
-function severityClass(severity?: "low" | "medium" | "high") {
-  if (severity === "high") return "text-red-300 border-red-500/30 bg-red-500/10";
-  if (severity === "medium") return "text-amber-300 border-amber-500/30 bg-amber-500/10";
-  return "text-emerald-300 border-emerald-500/30 bg-emerald-500/10";
+interface Props {
+  sources: SourceData[];
+  chartData: DailyData[];
 }
 
-export function AiInsights({ insights, loading, error }: AiInsightsProps) {
-  const { t } = useLanguage();
+export function AiInsights({ sources, chartData }: Props) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const insights = useMemo(() => {
+    if (!chartData || chartData.length === 0) return null;
+
+    const highestConvDay = [...chartData].sort((a, b) => b.conversionRate - a.conversionRate)[0];
+    const highestVolDay = [...chartData].sort((a, b) => b.totalLeads - a.totalLeads)[0];
+    const bestConvDay = [...chartData].filter(d => d.date !== highestConvDay.date).sort((a, b) => b.conversionRate - a.conversionRate)[0] || highestConvDay;
+
+    return {
+      highestConv: {
+        date: highestConvDay.date,
+        rate: highestConvDay.conversionRate.toFixed(1)
+      },
+      highestVol: {
+        date: highestVolDay.date,
+        isLowConv: highestVolDay.conversionRate < 50
+      },
+      bestConv: {
+        date: bestConvDay.date,
+        rate: bestConvDay.conversionRate.toFixed(1)
+      }
+    };
+  }, [chartData]);
 
   return (
-    <section className="glass-panel p-6">
-      <h3 className="text-lg font-semibold mb-4 flex items-center">
-        <div className="w-2 h-6 bg-cyan-500 rounded-full mr-3"></div>
-        {t.aiInsights}
-      </h3>
-
-      {loading ? (
-        <p className="text-sm text-slate-400">{t.loadingAiInsights}</p>
-      ) : error ? (
-        <p className="text-sm text-red-300">{error}</p>
-      ) : !insights ? (
-        <p className="text-sm text-slate-400">{t.noAiInsights}</p>
-      ) : (
-        <div className="space-y-4">
-          <p className="text-slate-200 text-sm">{insights.summary}</p>
-
-          <div>
-            <h4 className="text-sm font-medium text-slate-300 mb-2">{t.highlights}</h4>
-            <div className="space-y-2">
-              {insights.highlights.map((item, index) => (
-                <div
-                  key={`highlight-${index}`}
-                  className={`rounded-lg border px-3 py-2 text-sm ${severityClass(item.severity)}`}
+    <div className="space-y-6">
+      {/* Distribuție pe surse */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-slate-800 mb-6">Distribuție pe surse</h3>
+        <div className="flex flex-col sm:flex-row items-center">
+          <div className="w-40 h-40 relative">
+            {mounted && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <PieChart>
+                <Pie
+                  data={sources}
+                  innerRadius={50}
+                  outerRadius={70}
+                  paddingAngle={2}
+                  dataKey="percentage"
+                  stroke="none"
                 >
-                  <p className="font-medium">{item.title}</p>
-                  <p className="opacity-90">{item.detail}</p>
-                </div>
-              ))}
+                  {sources.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value: any) => `${value}%`}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            )}
+            {/* Center Text */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="text-xl font-bold text-slate-800">
+                {sources.reduce((acc, curr) => acc + curr.percentage, 0)}%
+              </span>
             </div>
           </div>
-
-          <div>
-            <h4 className="text-sm font-medium text-slate-300 mb-2">{t.recommendations}</h4>
-            <div className="space-y-2">
-              {insights.recommendations.map((item, index) => (
-                <div
-                  key={`recommendation-${index}`}
-                  className={`rounded-lg border px-3 py-2 text-sm ${severityClass(item.severity)}`}
-                >
-                  <p className="font-medium">{item.title}</p>
-                  <p className="opacity-90">{item.detail}</p>
+          
+          <div className="mt-4 sm:mt-0 sm:ml-8 flex flex-col gap-3">
+            {sources.map((source, idx) => (
+              <div key={idx} className="flex items-center justify-between text-sm w-32">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: source.color }}></div>
+                  <span className="text-slate-600">{source.name}</span>
                 </div>
-              ))}
-            </div>
+                <span className="font-medium text-slate-800">{source.percentage}%</span>
+              </div>
+            ))}
           </div>
         </div>
-      )}
-    </section>
+      </div>
+
+      {/* Observații */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-slate-800 mb-6">Observații</h3>
+        {insights ? (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />
+              <p className="text-sm text-slate-600 mt-0.5">
+                <span className="font-medium text-slate-800">{insights.highestConv.date}</span> are o conversie ridicată: {insights.highestConv.rate}%
+              </p>
+            </div>
+            
+            <div className="flex items-start gap-3">
+              <AlertTriangle className={`w-6 h-6 shrink-0 ${insights.highestVol.isLowConv ? 'text-amber-500' : 'text-blue-500'}`} />
+              <p className="text-sm text-slate-600 mt-0.5">
+                <span className="font-medium text-slate-800">{insights.highestVol.date}</span> are volum maxim, {insights.highestVol.isLowConv ? 'dar conversie mai slabă' : 'cu o conversie solidă'}
+              </p>
+            </div>
+            
+            <div className="flex items-start gap-3">
+              <Star className="w-6 h-6 text-emerald-500 fill-emerald-500 shrink-0" />
+              <p className="text-sm text-slate-600 mt-0.5">
+                <span className="font-medium text-slate-800">{insights.bestConv.date}</span> menține de asemenea o conversie excelentă: {insights.bestConv.rate}%
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">Nu există suficiente date pentru a genera observații.</p>
+        )}
+      </div>
+    </div>
   );
 }

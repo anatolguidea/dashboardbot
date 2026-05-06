@@ -1,104 +1,91 @@
-"use client";
-
 import React from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Users, Phone } from 'lucide-react';
-import { useLanguage } from './LanguageProvider';
+import { Users, MessageSquare, Phone, Percent } from 'lucide-react';
+import type { MetricsData } from '@/lib/types';
 
-interface MetricsProps {
-  data: {
-    messagesThisMonth: number;
-    totalUsers: number;
-    phoneNumbersCaptured: number;
-    growth: {
-      messages: string;
-      users: string;
-      phones: string;
-    };
-  };
+interface Props {
+  data: MetricsData;
 }
 
-export function KeyMetrics({ data }: MetricsProps) {
-  const { t } = useLanguage();
+export function KeyMetrics({ data }: Props) {
+  const formatNumber = (num: number) => new Intl.NumberFormat('ro-RO').format(num);
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
+  const formatPercentage = (num: number) => {
+    return new Intl.NumberFormat('ro-RO', {
+      style: 'decimal',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num) + '%';
+  };
+
+  const metrics = [
+    {
+      title: "Nr. total leaduri",
+      value: formatNumber(data.totalLeads),
+      trend: `+${data.trends.totalLeads}%`,
+      isPositive: data.trends.totalLeads >= 0,
+      icon: Users,
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600"
+    },
+    {
+      title: "Lead cu ≥ 2 mesaje",
+      value: formatNumber(data.leadsWith2PlusMessages),
+      trend: `+${data.trends.leadsWith2PlusMessages}%`,
+      isPositive: data.trends.leadsWith2PlusMessages >= 0,
+      icon: MessageSquare,
+      iconBg: "bg-emerald-100",
+      iconColor: "text-emerald-500"
+    },
+    {
+      title: "Lead cu număr de telefon",
+      value: formatNumber(data.leadsWithPhone),
+      trend: `+${data.trends.leadsWithPhone}%`,
+      isPositive: data.trends.leadsWithPhone >= 0,
+      icon: Phone,
+      iconBg: "bg-orange-100",
+      iconColor: "text-orange-500"
+    },
+    {
+      title: "% conversie",
+      value: formatPercentage(data.conversionRate),
+      trend: `+${data.trends.conversionRate} pp`,
+      isPositive: data.trends.conversionRate >= 0,
+      icon: Percent,
+      iconBg: "bg-orange-100",
+      iconColor: "text-orange-500"
     }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
+  ];
 
   return (
-    <motion.div 
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="grid grid-cols-1 md:grid-cols-3 gap-6"
-    >
-      <motion.div variants={item} className="glass-panel p-6 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl -mr-10 -mt-10 transition-transform group-hover:scale-150 duration-500"></div>
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-400 mb-1">{t.messagesThisMonth}</p>
-            <h3 className="text-4xl font-bold tracking-tight text-white">
-              {data.messagesThisMonth.toLocaleString()}
-            </h3>
-            <div className="mt-2 flex items-center text-sm">
-              <span className="text-emerald-400 font-medium">{data.growth.messages}</span>
-              <span className="text-slate-500 ml-2">{t.growth}</span>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {metrics.map((metric, idx) => (
+        <motion.div
+          key={metric.title}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: idx * 0.1 }}
+          className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex flex-col">
+               <span className="text-slate-500 text-sm font-medium mb-1">{metric.title}</span>
+               <span className="text-3xl font-bold text-slate-800">{metric.value}</span>
+            </div>
+            <div className={`p-3 rounded-full ${metric.iconBg}`}>
+              <metric.icon className={`w-6 h-6 ${metric.iconColor}`} />
             </div>
           </div>
-          <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
-            <MessageSquare className="w-6 h-6 text-indigo-400" />
+          
+          <div className="flex items-center text-xs mt-2">
+            <span className={`font-semibold mr-1 ${metric.isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+              {metric.isPositive ? '↑' : '↓'} {metric.trend}
+            </span>
+            <span className="text-slate-400">față de perioada anterioară</span>
           </div>
-        </div>
-      </motion.div>
-
-      <motion.div variants={item} className="glass-panel p-6 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-transform group-hover:scale-150 duration-500"></div>
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-400 mb-1">{t.totalUsers}</p>
-            <h3 className="text-4xl font-bold tracking-tight text-white">
-              {data.totalUsers.toLocaleString()}
-            </h3>
-            <div className="mt-2 flex items-center text-sm">
-              <span className="text-emerald-400 font-medium">{data.growth.users}</span>
-              <span className="text-slate-500 ml-2">{t.growth}</span>
-            </div>
-          </div>
-          <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
-            <Users className="w-6 h-6 text-violet-400" />
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div variants={item} className="glass-panel p-6 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-transform group-hover:scale-150 duration-500"></div>
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-400 mb-1">{t.phonesCaptured}</p>
-            <h3 className="text-4xl font-bold tracking-tight text-white">
-              {data.phoneNumbersCaptured.toLocaleString()}
-            </h3>
-            <div className="mt-2 flex items-center text-sm">
-              <span className="text-emerald-400 font-medium">{data.growth.phones}</span>
-              <span className="text-slate-500 ml-2">{t.growth}</span>
-            </div>
-          </div>
-          <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
-            <Phone className="w-6 h-6 text-emerald-400" />
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
+        </motion.div>
+      ))}
+    </div>
   );
 }
+
