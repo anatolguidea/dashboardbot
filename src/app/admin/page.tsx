@@ -1,21 +1,33 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { Trash2, LogOut, Plus, UserPlus, Settings, Edit2, X, Check } from 'lucide-react'
 
+interface Channel {
+  id: string;
+  name: string;
+  sheet_url: string;
+}
+
+interface User {
+  id: string;
+  email: string;
+  company_name: string | null;
+  role: string;
+  channels?: Channel[];
+}
+
 export default function AdminPage() {
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
   
   // Create/Edit User State
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [companyName, setCompanyName] = useState('')
-  const [editingUser, setEditingUser] = useState<any | null>(null)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
   
   // Assign Channel State
   const [selectedUserId, setSelectedUserId] = useState('')
@@ -28,8 +40,8 @@ export default function AdminPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to fetch users')
       setUsers(data)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred')
     } finally {
       setLoading(false)
     }
@@ -66,8 +78,8 @@ export default function AdminPage() {
       alert(editingUser ? 'Utilizator actualizat!' : 'Utilizator creat cu succes!')
       resetUserForm()
       fetchUsers()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred')
     }
   }
 
@@ -78,7 +90,7 @@ export default function AdminPage() {
     setEditingUser(null)
   }
 
-  const startEditUser = (user: any) => {
+  const startEditUser = (user: User) => {
     setEditingUser(user)
     setCompanyName(user.company_name || '')
     setEmail(user.email || '')
@@ -99,8 +111,8 @@ export default function AdminPage() {
       }
       alert('Utilizator șters!')
       fetchUsers()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred')
     }
   }
 
@@ -115,8 +127,8 @@ export default function AdminPage() {
         throw new Error(data.error)
       }
       fetchUsers()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred')
     }
   }
 
@@ -141,8 +153,8 @@ export default function AdminPage() {
       alert('Canal atribuit cu succes!')
       setSheetUrl('')
       fetchUsers()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred')
     }
   }
 
@@ -283,7 +295,7 @@ export default function AdminPage() {
                         <td className="px-8 py-6">
                           <div className="flex flex-wrap gap-2">
                             {u.channels && u.channels.length > 0 ? (
-                              u.channels.map((ch: any) => (
+                              u.channels.map((ch: Channel) => (
                                 <div key={ch.id} className="group relative">
                                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 pr-7 transition-all">
                                     {ch.name}

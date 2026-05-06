@@ -8,8 +8,6 @@ import { DataTable } from '@/components/DataTable';
 import { AiInsights } from '@/components/AiInsights';
 import { useMetrics } from '@/hooks/useMetrics';
 import { Download, RefreshCw, Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-
-import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 
 const MONTHS_RO = [
@@ -25,31 +23,36 @@ export default function Dashboard() {
   // Month navigation state
   const [viewDate, setViewDate] = useState(new Date());
   const [isCustomRange, setIsCustomRange] = useState(false);
-  
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  // Initialize dates based on current viewDate
+  const getInitialDates = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    const format = (d: Date) => {
+      const Y = d.getFullYear();
+      const M = String(d.getMonth() + 1).padStart(2, '0');
+      const D = String(d.getDate()).padStart(2, '0');
+      return `${Y}-${M}-${D}`;
+    };
+    
+    return { start: format(firstDay), end: format(lastDay) };
+  };
+
+  const initialDates = getInitialDates(viewDate);
+  const [startDate, setStartDate] = useState(initialDates.start);
+  const [endDate, setEndDate] = useState(initialDates.end);
   
   // Update dates when viewDate changes (unless in custom mode)
   useEffect(() => {
     if (!isCustomRange) {
-      const year = viewDate.getFullYear();
-      const month = viewDate.getMonth();
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      
-      const format = (d: Date) => {
-        const Y = d.getFullYear();
-        const M = String(d.getMonth() + 1).padStart(2, '0');
-        const D = String(d.getDate()).padStart(2, '0');
-        return `${Y}-${M}-${D}`;
-      };
-      
-      setStartDate(format(firstDay));
-      setEndDate(format(lastDay));
+      const { start, end } = getInitialDates(viewDate);
+      setStartDate(start);
+      setEndDate(end);
     }
   }, [viewDate, isCustomRange]);
 
-  const router = useRouter();
   const { data, loading, error } = useMetrics(source, startDate, endDate, grouping);
 
   const handleLogout = async () => {
@@ -222,7 +225,7 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-            {['Toate', ...(data?.sources?.map((s: any) => s.name) || ['Facebook', 'Instagram', 'Site'])].map(tab => (
+            {['Toate', ...(data?.sources?.map((s: { name: string }) => s.name) || ['Facebook', 'Instagram', 'Site'])].map(tab => (
               <button 
                 key={tab}
                 onClick={() => setSource(tab)}

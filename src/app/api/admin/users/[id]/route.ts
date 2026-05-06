@@ -4,12 +4,19 @@ import bcrypt from 'bcrypt';
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "../../auth/[...nextauth]/route"
 
+interface SessionUser {
+  id: string;
+  email: string;
+  role: string;
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
-  if (!session || (session.user as any).role !== 'admin') {
+  const user = session?.user as SessionUser | undefined
+  if (!user || user.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -17,7 +24,7 @@ export async function PATCH(
   const { email, password, company_name } = await request.json();
 
   try {
-    const updateData: any = {};
+    const updateData: Record<string, string | null> = {};
     if (email) updateData.email = email;
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);
@@ -29,10 +36,11 @@ export async function PATCH(
       data: updateData
     });
 
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _password, ...userWithoutPassword } = user;
     return NextResponse.json({ success: true, user: userWithoutPassword });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -41,7 +49,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
-  if (!session || (session.user as any).role !== 'admin') {
+  const user = session?.user as SessionUser | undefined
+  if (!user || user.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -52,8 +61,9 @@ export async function DELETE(
       where: { id }
     });
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

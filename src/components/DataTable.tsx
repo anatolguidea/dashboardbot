@@ -1,15 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React from 'react';
 import type { DailyData } from '@/lib/types';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Props {
   data: DailyData[];
 }
-
-const MONTHS_RO = [
-  'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
-  'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'
-];
 
 export function DataTable({ data }: Props) {
   const formatPercentage = (num: number) => {

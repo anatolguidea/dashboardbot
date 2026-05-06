@@ -38,6 +38,12 @@ function formatDDMMYYYY(date: Date): string {
 
 const MONTHS = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
 
+interface Channel {
+  id: string;
+  name: string;
+  sheet_url: string;
+}
+
 export async function fetchSheetData(
   channel: string = 'Toate',
   startDate?: string, // YYYY-MM-DD
@@ -56,7 +62,7 @@ export async function fetchSheetData(
   };
 
   // Fetch channels for this user from our local API
-  let channelsData: any[] = [];
+  let channelsData: Channel[] = [];
   try {
     const res = await fetch('/api/user/channels');
     if (!res.ok) {

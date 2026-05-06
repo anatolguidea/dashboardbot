@@ -67,7 +67,7 @@ export function AiInsights({ sources, chartData }: Props) {
                   ))}
                 </Pie>
                 <Tooltip 
-                  formatter={(value: any) => `${value}%`}
+                  formatter={(value: number) => `${value}%`}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                 />
               </PieChart>
