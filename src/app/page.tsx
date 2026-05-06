@@ -40,20 +40,14 @@ export default function Dashboard() {
     return { start: format(firstDay), end: format(lastDay) };
   };
 
-  const initialDates = getInitialDates(viewDate);
-  const [startDate, setStartDate] = useState(initialDates.start);
-  const [endDate, setEndDate] = useState(initialDates.end);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
-  // Update dates when viewDate changes (unless in custom mode)
-  useEffect(() => {
-    if (!isCustomRange) {
-      const { start, end } = getInitialDates(viewDate);
-      setStartDate(start);
-      setEndDate(end);
-    }
-  }, [viewDate, isCustomRange]);
+  const currentViewDates = getInitialDates(viewDate);
+  const effectiveStartDate = isCustomRange ? startDate : currentViewDates.start;
+  const effectiveEndDate = isCustomRange ? endDate : currentViewDates.end;
 
-  const { data, loading, error } = useMetrics(source, startDate, endDate, grouping);
+  const { data, loading, error } = useMetrics(source, effectiveStartDate, effectiveEndDate, grouping);
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/login' });
@@ -203,7 +197,7 @@ export default function Dashboard() {
             <Calendar className="w-4 h-4 mr-2 text-slate-400" />
             <input 
               type="date" 
-              value={startDate} 
+              value={effectiveStartDate} 
               onChange={e => {
                 setStartDate(e.target.value);
                 setIsCustomRange(true);
@@ -214,7 +208,7 @@ export default function Dashboard() {
             <span className="mx-2 text-slate-400">-</span>
             <input 
               type="date" 
-              value={endDate} 
+              value={effectiveEndDate} 
               onChange={e => {
                 setEndDate(e.target.value);
                 setIsCustomRange(true);
