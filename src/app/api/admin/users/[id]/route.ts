@@ -21,7 +21,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { email, password, company_name } = await request.json();
+  const { email, password, company_name, db_name } = await request.json();
 
   try {
     const updateData: Record<string, string | null> = {};
@@ -30,6 +30,7 @@ export async function PATCH(
       updateData.password = await bcrypt.hash(password, 10);
     }
     if (company_name !== undefined) updateData.company_name = company_name;
+    if (db_name !== undefined) updateData.db_name = db_name;
 
     const user = await prisma.user.update({
       where: { id },

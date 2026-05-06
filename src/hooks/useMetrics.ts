@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { MetricsData } from '@/lib/types';
-import { fetchSheetData } from '@/lib/sheets';
+import { fetchMetricsData } from '@/lib/metrics';
 
 interface MetricsState {
   requestKey: string;
@@ -27,7 +27,7 @@ export function useMetrics(
 
     const run = async () => {
       try {
-        const data = await fetchSheetData(channel, startDate, endDate, grouping);
+        const data = await fetchMetricsData(channel, startDate, endDate, grouping);
         if (!active) return;
         setState({
           requestKey,

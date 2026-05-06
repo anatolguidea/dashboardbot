@@ -13,17 +13,6 @@ model User {
   password     String
   role         String    @default("client")
   company_name String?
-  channels     Channel[]
+  db_name      String?
   createdAt    DateTime  @default(now())
-}
-
-model Channel {
-  id        String   @id @default(uuid())
-  name      String
-  sheet_url String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  createdAt DateTime @default(now())
-
-  @@index([userId])
 }

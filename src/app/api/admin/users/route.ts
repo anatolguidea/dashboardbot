@@ -21,9 +21,7 @@ export async function GET() {
 
   try {
     const users = await prisma.user.findMany({
-      include: {
-        channels: true
-      },
+
       orderBy: {
         createdAt: 'desc'
       }
@@ -52,7 +50,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { email, password, company_name } = await request.json()
+    const { email, password, company_name, db_name } = await request.json()
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
@@ -76,6 +74,7 @@ export async function POST(request: Request) {
         email,
         password: hashedPassword,
         company_name: company_name || '',
+        db_name: db_name || null,
         role: 'client' // Admin creates clients
       }
     })

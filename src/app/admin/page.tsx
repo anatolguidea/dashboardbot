@@ -4,18 +4,14 @@ import React, { useState, useEffect } from 'react'
 import { signOut } from 'next-auth/react'
 import { Trash2, LogOut, Plus, UserPlus, Settings, Edit2, X, Check } from 'lucide-react'
 
-interface Channel {
-  id: string;
-  name: string;
-  sheet_url: string;
-}
+
 
 interface User {
   id: string;
   email: string;
   company_name: string | null;
   role: string;
-  channels?: Channel[];
+  db_name: string | null;
 }
 
 export default function AdminPage() {
@@ -29,10 +25,7 @@ export default function AdminPage() {
   const [companyName, setCompanyName] = useState('')
   const [editingUser, setEditingUser] = useState<User | null>(null)
   
-  // Assign Channel State
-  const [selectedUserId, setSelectedUserId] = useState('')
-  const [channelName, setChannelName] = useState('Facebook')
-  const [sheetUrl, setSheetUrl] = useState('')
+  const [dbName, setDbName] = useState('')
 
   const fetchUsers = async () => {
     try {
@@ -68,7 +61,8 @@ export default function AdminPage() {
          body: JSON.stringify({ 
            email: email || undefined, 
            password: password || undefined, 
-           company_name: companyName 
+           company_name: companyName,
+           db_name: dbName || undefined
          })
       })
       
@@ -87,12 +81,14 @@ export default function AdminPage() {
     setEmail('')
     setPassword('')
     setCompanyName('')
+    setDbName('')
     setEditingUser(null)
   }
 
   const startEditUser = (user: User) => {
     setEditingUser(user)
     setCompanyName(user.company_name || '')
+    setDbName(user.db_name || '')
     setEmail(user.email || '')
     setPassword('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -116,47 +112,7 @@ export default function AdminPage() {
     }
   }
 
-  const handleDeleteChannel = async (channelId: string) => {
-    if (!confirm('Ștergi acest canal?')) return
-    try {
-      const res = await fetch(`/api/admin/channels/${channelId}`, {
-        method: 'DELETE'
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error)
-      }
-      fetchUsers()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred')
-    }
-  }
 
-  const handleAssignChannel = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-
-    try {
-      const res = await fetch('/api/admin/channels', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: selectedUserId,
-          name: channelName,
-          sheet_url: sheetUrl
-        })
-      })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      
-      alert('Canal atribuit cu succes!')
-      setSheetUrl('')
-      fetchUsers()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred')
-    }
-  }
 
   if (loading) return (
     <div className="h-screen w-full flex items-center justify-center bg-slate-50">
@@ -224,6 +180,10 @@ export default function AdminPage() {
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 ml-1">Parolă (Lăsați gol pentru a păstra)</label>
                   <input type="text" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" placeholder="••••••••" />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 ml-1">Bază de date MySQL</label>
+                  <input type="text" value={dbName} onChange={e => setDbName(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" placeholder="ex: digix_db" />
+                </div>
                 <button type="submit" className={`w-full text-white font-semibold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mt-2 ${editingUser ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-100' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-100'}`}>
                   {editingUser ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                   {editingUser ? 'Salvează Modificările' : 'Creează Cont'}
@@ -231,43 +191,7 @@ export default function AdminPage() {
               </form>
             </section>
 
-            {/* Assign Channel Form */}
-            <section className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="bg-emerald-50 p-2 rounded-lg text-emerald-600">
-                  <Plus className="w-5 h-5" />
-                </div>
-                <h2 className="text-xl font-bold text-slate-800">Adaugă Canal</h2>
-              </div>
-              <form onSubmit={handleAssignChannel} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 ml-1">Client</label>
-                  <select required value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all appearance-none">
-                    <option value="" disabled>Alege client...</option>
-                    {users.filter(u => u.role !== 'admin').map(u => (
-                      <option key={u.id} value={u.id}>{u.company_name || u.id}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 ml-1">Platformă</label>
-                  <select required value={channelName} onChange={e => setChannelName(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all appearance-none">
-                    <option value="Facebook">Facebook</option>
-                    <option value="Instagram">Instagram</option>
-                    <option value="Site">Site</option>
-                    <option value="WhatsApp">WhatsApp</option>
-                    <option value="TikTok">TikTok</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 ml-1">Link CSV (Edit link ok)</label>
-                  <input required type="url" value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all" placeholder="https://docs.google.com/spreadsheets/..." />
-                </div>
-                <button type="submit" className="w-full bg-emerald-600 text-white font-semibold py-3.5 rounded-xl hover:bg-emerald-700 transition-all shadow-md shadow-emerald-100 flex items-center justify-center gap-2 mt-2">
-                  Salvează Configurația
-                </button>
-              </form>
-            </section>
+
           </div>
 
           {/* Users List */}
@@ -281,7 +205,7 @@ export default function AdminPage() {
                   <thead>
                     <tr className="bg-slate-50/50">
                       <th className="text-left px-8 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Client</th>
-                      <th className="text-left px-8 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Canale Configurate</th>
+                      <th className="text-left px-8 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bază de date</th>
                       <th className="text-right px-8 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Acțiuni</th>
                     </tr>
                   </thead>
@@ -294,22 +218,12 @@ export default function AdminPage() {
                         </td>
                         <td className="px-8 py-6">
                           <div className="flex flex-wrap gap-2">
-                            {u.channels && u.channels.length > 0 ? (
-                              u.channels.map((ch: Channel) => (
-                                <div key={ch.id} className="group relative">
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 pr-7 transition-all">
-                                    {ch.name}
-                                    <button 
-                                      onClick={() => handleDeleteChannel(ch.id)}
-                                      className="absolute right-2 opacity-0 group-hover:opacity-100 text-blue-400 hover:text-red-500 transition-all"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  </span>
-                                </div>
-                              ))
+                            {u.db_name ? (
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                {u.db_name}
+                              </span>
                             ) : (
-                              <span className="text-xs text-slate-400 italic">Niciun canal</span>
+                              <span className="text-xs text-slate-400 italic">Nespecificată</span>
                             )}
                           </div>
                         </td>
