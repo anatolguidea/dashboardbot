@@ -24,9 +24,14 @@ export function AiInsights({ sources, chartData }: Props) {
   const insights = useMemo(() => {
     if (!chartData || chartData.length === 0) return null;
 
-    const highestConvDay = [...chartData].sort((a, b) => b.conversionRate - a.conversionRate)[0];
-    const highestVolDay = [...chartData].sort((a, b) => b.totalLeads - a.totalLeads)[0];
-    const bestConvDay = [...chartData].filter(d => d.date !== highestConvDay.date).sort((a, b) => b.conversionRate - a.conversionRate)[0] || highestConvDay;
+    const rowsWithLeads = chartData.filter((row) => row.totalLeads > 0);
+    const rowsWithConversionBase = chartData.filter((row) => row.leadsWith2PlusMessages > 0);
+
+    if (rowsWithLeads.length === 0 || rowsWithConversionBase.length === 0) return null;
+
+    const highestConvDay = [...rowsWithConversionBase].sort((a, b) => b.conversionRate - a.conversionRate)[0];
+    const highestVolDay = [...rowsWithLeads].sort((a, b) => b.totalLeads - a.totalLeads)[0];
+    const bestConvDay = [...rowsWithConversionBase].filter(d => d.date !== highestConvDay.date).sort((a, b) => b.conversionRate - a.conversionRate)[0] || null;
 
     return {
       highestConv: {
@@ -37,10 +42,12 @@ export function AiInsights({ sources, chartData }: Props) {
         date: highestVolDay.date,
         isLowConv: highestVolDay.conversionRate < 50
       },
-      bestConv: {
-        date: bestConvDay.date,
-        rate: bestConvDay.conversionRate.toFixed(1)
-      }
+      bestConv: bestConvDay
+        ? {
+            date: bestConvDay.date,
+            rate: bestConvDay.conversionRate.toFixed(1)
+          }
+        : null
     };
   }, [chartData]);
 
@@ -76,7 +83,7 @@ export function AiInsights({ sources, chartData }: Props) {
             {/* Center Text */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <span className="text-xl font-bold text-slate-800">
-                {sources.reduce((acc, curr) => acc + curr.percentage, 0)}%
+                {sources.length > 0 ? '100%' : '0%'}
               </span>
             </div>
           </div>
@@ -113,13 +120,14 @@ export function AiInsights({ sources, chartData }: Props) {
                 <span className="font-medium text-slate-800">{insights.highestVol.date}</span> are volum maxim, {insights.highestVol.isLowConv ? 'dar conversie mai slabă' : 'cu o conversie solidă'}
               </p>
             </div>
-            
-            <div className="flex items-start gap-3">
-              <Star className="w-6 h-6 text-emerald-500 fill-emerald-500 shrink-0" />
-              <p className="text-sm text-slate-600 mt-0.5">
-                <span className="font-medium text-slate-800">{insights.bestConv.date}</span> menține de asemenea o conversie excelentă: {insights.bestConv.rate}%
-              </p>
-            </div>
+            {insights.bestConv && (
+              <div className="flex items-start gap-3">
+                <Star className="w-6 h-6 text-emerald-500 fill-emerald-500 shrink-0" />
+                <p className="text-sm text-slate-600 mt-0.5">
+                  <span className="font-medium text-slate-800">{insights.bestConv.date}</span> menține de asemenea o conversie excelentă: {insights.bestConv.rate}%
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-sm text-slate-500">Nu există suficiente date pentru a genera observații.</p>

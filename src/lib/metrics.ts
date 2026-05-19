@@ -54,6 +54,62 @@ function formatDDMMYYYY(date: Date): string {
   return `${d}.${m}.${y}`;
 }
 
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function getDateRangeComparison(startDate?: string, endDate?: string) {
+  if (!startDate || !endDate) return null;
+
+  const currentStart = parseFlexibleDate(startDate);
+  const currentEnd = parseFlexibleDate(endDate);
+  if (Number.isNaN(currentStart.getTime()) || Number.isNaN(currentEnd.getTime())) {
+    return null;
+  }
+
+  currentStart.setHours(0, 0, 0, 0);
+  currentEnd.setHours(23, 59, 59, 999);
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const daysInRange = Math.floor((currentEnd.getTime() - currentStart.getTime()) / dayMs) + 1;
+  if (daysInRange <= 0) return null;
+
+  const previousEnd = addDays(currentStart, -1);
+  previousEnd.setHours(23, 59, 59, 999);
+
+  const previousStart = addDays(previousEnd, -(daysInRange - 1));
+  previousStart.setHours(0, 0, 0, 0);
+
+  return { currentStart, currentEnd, previousStart, previousEnd };
+}
+
+function aggregateDailyData(data: DailyData[]) {
+  const totalLeads = data.reduce((acc, curr) => acc + curr.totalLeads, 0);
+  const leadsWith2PlusMessages = data.reduce((acc, curr) => acc + curr.leadsWith2PlusMessages, 0);
+  const leadsWithPhone = data.reduce((acc, curr) => acc + curr.leadsWithPhone, 0);
+  const conversionRate = leadsWith2PlusMessages > 0 ? (leadsWithPhone / leadsWith2PlusMessages) * 100 : 0;
+
+  return {
+    totalLeads,
+    leadsWith2PlusMessages,
+    leadsWithPhone,
+    conversionRate,
+  };
+}
+
+function calculateTrends(current: ReturnType<typeof aggregateDailyData>, previous: ReturnType<typeof aggregateDailyData>) {
+  const calcTrend = (oldVal: number, newVal: number) => oldVal > 0 ? ((newVal - oldVal) / oldVal) * 100 : 0;
+
+  return {
+    totalLeads: calcTrend(previous.totalLeads, current.totalLeads),
+    leadsWith2PlusMessages: calcTrend(previous.leadsWith2PlusMessages, current.leadsWith2PlusMessages),
+    leadsWithPhone: calcTrend(previous.leadsWithPhone, current.leadsWithPhone),
+    conversionRate: current.conversionRate - previous.conversionRate
+  };
+}
+
 const MONTHS = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
 
 const defaultEmptyData: MetricsData = {
@@ -147,13 +203,15 @@ export async function fetchMetricsData(
       });
     }
 
+    const allMetricsData = [...allDailyData];
+    const comparisonRange = getDateRangeComparison(startDate, endDate);
+
     // 3. Filter by date range
     if (startDate || endDate) {
-      const start = startDate ? new Date(startDate) : new Date(0);
-      const end = endDate ? new Date(endDate) : new Date(8640000000000000);
+      const start = comparisonRange?.currentStart ?? (startDate ? parseFlexibleDate(startDate) : new Date(0));
+      const end = comparisonRange?.currentEnd ?? (endDate ? parseFlexibleDate(endDate) : new Date(8640000000000000));
       start.setHours(0, 0, 0, 0);
       end.setHours(23, 59, 59, 999);
-
       allDailyData = allDailyData.filter(d => {
         const rowDate = parseFlexibleDate(d.date);
         return rowDate >= start && rowDate <= end;
@@ -212,10 +270,8 @@ export async function fetchMetricsData(
        }
     }
 
-    const totalLeads = displayData.reduce((acc, curr) => acc + curr.totalLeads, 0);
-    const leadsWith2PlusMessages = displayData.reduce((acc, curr) => acc + curr.leadsWith2PlusMessages, 0);
-    const leadsWithPhone = displayData.reduce((acc, curr) => acc + curr.leadsWithPhone, 0);
-    const conversionRate = leadsWith2PlusMessages > 0 ? (leadsWithPhone / leadsWith2PlusMessages) * 100 : 0;
+    const currentTotals = aggregateDailyData(displayData);
+    const { totalLeads, leadsWith2PlusMessages, leadsWithPhone, conversionRate } = currentTotals;
 
     let trends = {
       totalLeads: 0,
@@ -224,19 +280,19 @@ export async function fetchMetricsData(
       conversionRate: 0
     };
 
-    if (displayData.length >= 2) {
-      const lastDay = displayData[displayData.length - 1];
-      const prevDay = displayData[displayData.length - 2];
-      const calcTrend = (oldVal: number, newVal: number) => oldVal > 0 ? ((newVal - oldVal) / oldVal) * 100 : 0;
-      trends = {
-        totalLeads: calcTrend(prevDay.totalLeads, lastDay.totalLeads),
-        leadsWith2PlusMessages: calcTrend(prevDay.leadsWith2PlusMessages, lastDay.leadsWith2PlusMessages),
-        leadsWithPhone: calcTrend(prevDay.leadsWithPhone, lastDay.leadsWithPhone),
-        conversionRate: lastDay.conversionRate - prevDay.conversionRate
-      };
+    if (comparisonRange) {
+      const previousPeriodData = allMetricsData.filter(d => {
+        const rowDate = parseFlexibleDate(d.date);
+        const inPreviousRange = rowDate >= comparisonRange.previousStart && rowDate <= comparisonRange.previousEnd;
+        const matchesChannel = channel === 'Toate' || d.source.toLowerCase() === channel.toLowerCase();
+        return inPreviousRange && matchesChannel;
+      });
+
+      trends = calculateTrends(currentTotals, aggregateDailyData(previousPeriodData));
     }
 
     // Generate source percentages for the pie chart / legend
+    const allSourceLeads = allDailyData.reduce((sum, d) => sum + d.totalLeads, 0);
     const sources = availableSources.map((sourceName, index) => {
       const sourceLeads = allDailyData
         .filter(d => d.source.toLowerCase() === sourceName.toLowerCase())
@@ -244,7 +300,7 @@ export async function fetchMetricsData(
         
       return {
         name: sourceName,
-        percentage: totalLeads > 0 ? Math.round((sourceLeads / allDailyData.reduce((s, d) => s + d.totalLeads, 0)) * 100) : 0,
+        percentage: allSourceLeads > 0 ? Math.round((sourceLeads / allSourceLeads) * 100) : 0,
         color: defaultColors[index % defaultColors.length]
       };
     });

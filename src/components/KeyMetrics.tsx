@@ -9,6 +9,10 @@ interface Props {
 
 export function KeyMetrics({ data }: Props) {
   const formatNumber = (num: number) => new Intl.NumberFormat('ro-RO').format(num);
+  const formatTrend = (num: number, suffix: string) => {
+    const sign = num > 0 ? '+' : '';
+    return `${sign}${num}${suffix}`;
+  };
 
   const formatPercentage = (num: number) => {
     return new Intl.NumberFormat('ro-RO', {
@@ -22,7 +26,7 @@ export function KeyMetrics({ data }: Props) {
     {
       title: "Nr. total leaduri",
       value: formatNumber(data.totalLeads),
-      trend: `+${data.trends.totalLeads}%`,
+      trend: formatTrend(data.trends.totalLeads, '%'),
       isPositive: data.trends.totalLeads >= 0,
       icon: Users,
       iconBg: "bg-blue-100",
@@ -31,7 +35,7 @@ export function KeyMetrics({ data }: Props) {
     {
       title: "Lead cu ≥ 2 mesaje",
       value: formatNumber(data.leadsWith2PlusMessages),
-      trend: `+${data.trends.leadsWith2PlusMessages}%`,
+      trend: formatTrend(data.trends.leadsWith2PlusMessages, '%'),
       isPositive: data.trends.leadsWith2PlusMessages >= 0,
       icon: MessageSquare,
       iconBg: "bg-emerald-100",
@@ -40,7 +44,7 @@ export function KeyMetrics({ data }: Props) {
     {
       title: "Lead cu număr de telefon",
       value: formatNumber(data.leadsWithPhone),
-      trend: `+${data.trends.leadsWithPhone}%`,
+      trend: formatTrend(data.trends.leadsWithPhone, '%'),
       isPositive: data.trends.leadsWithPhone >= 0,
       icon: Phone,
       iconBg: "bg-orange-100",
@@ -49,7 +53,7 @@ export function KeyMetrics({ data }: Props) {
     {
       title: "% conversie",
       value: formatPercentage(data.conversionRate),
-      trend: `+${data.trends.conversionRate} pp`,
+      trend: formatTrend(data.trends.conversionRate, ' pp'),
       isPositive: data.trends.conversionRate >= 0,
       icon: Percent,
       iconBg: "bg-orange-100",
@@ -88,4 +92,3 @@ export function KeyMetrics({ data }: Props) {
     </div>
   );
 }
-

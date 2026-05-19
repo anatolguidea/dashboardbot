@@ -7,7 +7,7 @@ import { ActivityCharts } from '@/components/ActivityCharts';
 import { DataTable } from '@/components/DataTable';
 import { AiInsights } from '@/components/AiInsights';
 import { useMetrics } from '@/hooks/useMetrics';
-import { Download, RefreshCw, Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, RefreshCw, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 
 const MONTHS_RO = [
@@ -175,26 +175,29 @@ export default function Dashboard() {
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4 mb-8">
           {/* Month Navigator */}
-          <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-            <button 
-              onClick={handlePrevMonth}
-              className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="px-4 py-1.5 text-sm font-semibold text-slate-700 min-w-[120px] text-center">
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-semibold text-slate-700 min-w-[120px]">
               {MONTHS_RO[viewDate.getMonth()]} {viewDate.getFullYear()}
             </div>
-            <button 
-              onClick={handleNextMonth}
-              className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+            <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+              <button 
+                onClick={handlePrevMonth}
+                className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors"
+                aria-label="Luna anterioară"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={handleNextMonth}
+                className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors"
+                aria-label="Luna următoare"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400">
-            <Calendar className="w-4 h-4 mr-2 text-slate-400" />
             <input 
               type="date" 
               value={effectiveStartDate} 
