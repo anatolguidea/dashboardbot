@@ -40,6 +40,18 @@ function parseFlexibleDate(dateStr: string): Date {
   return new Date(year, month, day);
 }
 
+function normalizeDbDate(date: string | Date): string {
+  if (date instanceof Date) {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+  }
+
+  const datePart = date.split('T')[0];
+  const parsed = parseFlexibleDate(datePart);
+  if (Number.isNaN(parsed.getTime())) return datePart;
+
+  return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+}
+
 function getStartOfWeek(date: Date): Date {
   const d = new Date(date);
   const day = d.getDay();
@@ -52,6 +64,13 @@ function formatDDMMYYYY(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const y = date.getFullYear();
   return `${d}.${m}.${y}`;
+}
+
+function formatYYYYMMDD(date: Date): string {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = date.getFullYear();
+  return `${y}-${m}-${d}`;
 }
 
 function addDays(date: Date, days: number): Date {
@@ -166,7 +185,7 @@ export async function fetchMetricsData(
   try {
     // 1. Fetch ALL sources available in this client's database to generate tabs automatically
     const sourcesRaw = await prisma.$queryRawUnsafe<RawSourceRow[]>(`
-      SELECT DISTINCT source FROM ${db_name}.daily_stats WHERE source IS NOT NULL
+      SELECT DISTINCT source FROM ${db_name}.daily_stats WHERE source IS NOT NULL ORDER BY source ASC
     `);
     
     const availableSources = sourcesRaw.map(s => s.source as string);
@@ -184,12 +203,12 @@ export async function fetchMetricsData(
         conv as conversionRate,
         errors as errorsDetected
       FROM ${db_name}.daily_stats
+      ORDER BY stat_date ASC, source ASC
     `);
 
     let allDailyData: DailyData[] = [];
     for (const row of rawData) {
-      const d = new Date(row.date);
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const dateStr = normalizeDbDate(row.date);
       
       allDailyData.push({
         date: dateStr,
@@ -240,10 +259,10 @@ export async function fetchMetricsData(
               const weekStart = getStartOfWeek(rowDate);
               const weekEnd = new Date(weekStart);
               weekEnd.setDate(weekStart.getDate() + 6);
-              groupKey = weekStart.toISOString();
+              groupKey = formatYYYYMMDD(weekStart);
               displayDate = `${formatDDMMYYYY(weekStart)} - ${formatDDMMYYYY(weekEnd)}`;
             } else if (grouping === 'Lună') {
-              groupKey = `${rowDate.getFullYear()}-${rowDate.getMonth()}`;
+              groupKey = `${rowDate.getFullYear()}-${String(rowDate.getMonth() + 1).padStart(2, '0')}`;
               displayDate = `${MONTHS[rowDate.getMonth()]} ${rowDate.getFullYear()}`;
             }
          }
@@ -264,10 +283,9 @@ export async function fetchMetricsData(
            existing.conversionRate = existing.leadsWith2PlusMessages > 0 ? (existing.leadsWithPhone / existing.leadsWith2PlusMessages) * 100 : 0;
          }
        }
-       displayData = Array.from(mergedByDate.values());
-       if (grouping === 'Zi') {
-          displayData.sort((a, b) => parseFlexibleDate(a.date).getTime() - parseFlexibleDate(b.date).getTime());
-       }
+       displayData = Array.from(mergedByDate.entries())
+         .sort(([a], [b]) => a.localeCompare(b))
+         .map(([, value]) => value);
     }
 
     const currentTotals = aggregateDailyData(displayData);
@@ -292,15 +310,17 @@ export async function fetchMetricsData(
     }
 
     // Generate source percentages for the pie chart / legend
-    const allSourceLeads = allDailyData.reduce((sum, d) => sum + d.totalLeads, 0);
+    const sourceDistributionData = channel === 'Toate' ? allDailyData : filteredData;
+    const allSourceLeads = sourceDistributionData.reduce((sum, d) => sum + d.totalLeads, 0);
     const sources = availableSources.map((sourceName, index) => {
-      const sourceLeads = allDailyData
+      const sourceLeads = sourceDistributionData
         .filter(d => d.source.toLowerCase() === sourceName.toLowerCase())
         .reduce((sum, d) => sum + d.totalLeads, 0);
         
       return {
         name: sourceName,
         percentage: allSourceLeads > 0 ? Math.round((sourceLeads / allSourceLeads) * 100) : 0,
+        totalLeads: sourceLeads,
         color: defaultColors[index % defaultColors.length]
       };
     });

@@ -47,6 +47,7 @@ For a client's database to be compatible with the dashboard, it **must** contain
 | `source` | VARCHAR | Platform name (e.g., 'Facebook', 'Site') |
 | `total` | INT | Total leads |
 | `msg2` | INT | Leads with 2+ messages |
+| `ramase` | INT | Leads with only 1 message / remaining leads |
 | `phone` | INT | Leads with phone numbers |
 | `conv` | DECIMAL | Conversion rate % |
 | `errors` | INT | Detected errors (optional) |

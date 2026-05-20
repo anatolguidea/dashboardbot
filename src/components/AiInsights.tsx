@@ -6,6 +6,7 @@ import type { DailyData } from '@/lib/types';
 interface SourceData {
   name: string;
   percentage: number;
+  totalLeads: number;
   color: string;
 }
 
@@ -16,6 +17,7 @@ interface Props {
 
 export function AiInsights({ sources, chartData }: Props) {
   const [mounted, setMounted] = React.useState(false);
+  const hasSourceLeads = sources.some((source) => source.totalLeads > 0);
 
   React.useEffect(() => {
     setMounted(true);
@@ -83,7 +85,7 @@ export function AiInsights({ sources, chartData }: Props) {
             {/* Center Text */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <span className="text-xl font-bold text-slate-800">
-                {sources.length > 0 ? '100%' : '0%'}
+                {hasSourceLeads ? '100%' : '0%'}
               </span>
             </div>
           </div>

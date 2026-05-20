@@ -49,6 +49,18 @@ export default function Dashboard() {
 
   const { data, loading, error } = useMetrics(source, effectiveStartDate, effectiveEndDate, grouping);
 
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    setEndDate(prev => prev || effectiveEndDate);
+    setIsCustomRange(true);
+  };
+
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value);
+    setStartDate(prev => prev || effectiveStartDate);
+    setIsCustomRange(true);
+  };
+
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/login' });
   };
@@ -201,10 +213,7 @@ export default function Dashboard() {
             <input 
               type="date" 
               value={effectiveStartDate} 
-              onChange={e => {
-                setStartDate(e.target.value);
-                setIsCustomRange(true);
-              }}
+              onChange={e => handleStartDateChange(e.target.value)}
               className="text-sm text-slate-700 outline-none bg-transparent"
               title="Data de început"
             />
@@ -212,10 +221,7 @@ export default function Dashboard() {
             <input 
               type="date" 
               value={effectiveEndDate} 
-              onChange={e => {
-                setEndDate(e.target.value);
-                setIsCustomRange(true);
-              }}
+              onChange={e => handleEndDateChange(e.target.value)}
               className="text-sm text-slate-700 outline-none bg-transparent"
               title="Data de sfârșit"
             />

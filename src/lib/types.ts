@@ -29,6 +29,7 @@ export interface MetricsData {
   sources: {
     name: string;
     percentage: number;
+    totalLeads: number;
     color: string;
   }[];
 }
