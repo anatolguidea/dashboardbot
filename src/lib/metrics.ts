@@ -209,15 +209,17 @@ export async function fetchMetricsData(
     let allDailyData: DailyData[] = [];
     for (const row of rawData) {
       const dateStr = normalizeDbDate(row.date);
+      const leadsWith2PlusMessages = Number(row.leadsWith2PlusMessages) || 0;
+      const leadsWithPhone = Number(row.leadsWithPhone) || 0;
       
       allDailyData.push({
         date: dateStr,
         source: row.source || 'Unknown',
         totalLeads: Number(row.totalLeads) || 0,
-        leadsWith2PlusMessages: Number(row.leadsWith2PlusMessages) || 0,
+        leadsWith2PlusMessages,
         leadsWith1Message: Number(row.leadsWith1Message) || 0,
-        leadsWithPhone: Number(row.leadsWithPhone) || 0,
-        conversionRate: Number(row.conversionRate) || 0,
+        leadsWithPhone,
+        conversionRate: leadsWith2PlusMessages > 0 ? (leadsWithPhone / leadsWith2PlusMessages) * 100 : 0,
         errorsDetected: Number(row.errorsDetected) || 0,
       });
     }
